@@ -14,12 +14,14 @@ SERVERS =   [
             "www.google.com",
             "www.tcpipguide.com",
             "www.tinyos.net",
-            "www.linux-ip.net"
+            "www.linux-ip.net",
             ]
 
 
-SERVER = SERVERS[2]
-PORT = 80
+SERVER = SERVERS[4]
+SERVER = "0.0.0.0"
+# PORT = 80
+PORT = 4200
 ADDR = (SERVER, PORT)
 FORMAT = "utf-8"
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
