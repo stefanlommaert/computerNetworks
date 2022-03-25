@@ -1,6 +1,7 @@
 import socket
-
-from joblib import PrintTime
+from PIL import Image
+import io
+from bs4 import BeautifulSoup
 # https://www.geeks3d.com/hacklab/20190110/python-3-simple-http-request-with-the-socket-module/
 # www.example.com
 # www.google.com
@@ -17,7 +18,7 @@ SERVERS =   [
             ]
 
 
-SERVER = SERVERS[4]
+SERVER = SERVERS[1]
 PORT = 80
 ADDR = (SERVER, PORT)
 FORMAT = "utf-8"
@@ -46,6 +47,7 @@ def splitHeader(msg):
         if (msg[i:i+4]) == b"\r\n\r\n":
             header = msg[:i]
             totalBody = msg[i+4:]
+            body = totalBody
         i += 1
     j = 0
     if isChunked(header):
@@ -66,17 +68,19 @@ def splitHeader(msg):
 
 
 msg = "GET / HTTP/1.1\r\nHost:%s\r\n\r\n" % SERVER
+
 send(msg)
 response = []
 while True:
     try:
         client.settimeout(1)
-        response.append(client.recv(1024))
-        # print("received")
+        data = client.recv(10000)
+        if data == b"":
+            raise Exception("Receiving empty data")
+        response.append(data)
     except:
         response = b''.join(response)
         header, body = splitHeader(response)
-        # print(chunked)
         body = body.decode("latin-1")
         f = open("htmlBody.html", "w")
         f.write(body)
@@ -84,26 +88,41 @@ while True:
         response = []
         break
 
+response = []
+
+f = open("htmlBody.html", "r")
+images = []
+soup = BeautifulSoup(f, features="html.parser")
+title = 0
+for img in soup.findAll('img'):
+    images.append(img.get('src'))
+    img["src"] = img["src"].replace(img.get('src'), "images/%s.png" %title)
+    title += 1
+f = open("htmlBody.html", "w")
+f.write(str(soup))
+f.close()
+title = 0
+for image in images:
+    msg = "GET /%s HTTP/1.1\r\nHost:%s\r\n\r\n" %(image, SERVER)
+    send(msg)
+    while True:
+        try:
+            client.settimeout(0.5)
+            response.append(client.recv(10000))
+            # print(response)
+        except:
+            response = b''.join(response)
+            header, body = splitHeader(response)
+            # print(image, "saved")
+
+            img = Image.open(io.BytesIO(body))
+            img.save("images/%s.png" %title)
+            title += 1
+            response = []
+            break
+
 
 
 #open and read the file after the appending:
 # f = open("htmlBody.html", "r")
 # print(f.read()) 
-
-
-
-
-    # except:
-    #     response = b''.join(response)
-    #     header, body = splitHeader(response)
-    #     print(body[:100])
-    #     for i in range(len(response)):
-    #         if (response[i:i+14]) == "Content-Length":
-    #             contentLength = int(response[i+16:i+21]) #TODO: slice tot enter begint, niet tot character i+19
-    #             # print(contentLength)
-    #             body = (response[-(contentLength):])
-    #             f = open("htmlBody.html", "w")
-    #             f.write(body)
-    #             f.close()
-    #     response = []
-    #     break
