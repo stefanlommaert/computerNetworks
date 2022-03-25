@@ -18,7 +18,7 @@ SERVERS =   [
             ]
 
 
-SERVER = SERVERS[1]
+SERVER = SERVERS[2]
 PORT = 80
 ADDR = (SERVER, PORT)
 FORMAT = "utf-8"
@@ -51,6 +51,7 @@ def splitHeader(msg):
         i += 1
     j = 0
     if isChunked(header):
+        totalBody = b""
         while finalChunk == False:
             if (body[j:j+2]) == b"\r\n":
                 chunkSize = body[:j]
@@ -113,12 +114,16 @@ for image in images:
         except:
             response = b''.join(response)
             header, body = splitHeader(response)
-            # print(image, "saved")
-
-            img = Image.open(io.BytesIO(body))
-            img.save("images/%s.png" %title)
+            print(image, "saving")
+            try:
+                img = Image.open(io.BytesIO(body))
+                img.save("images/%s.png" %title)
+            except:
+                print(image, "requested URL not found")
             title += 1
             response = []
+            # print(image, "saved")
+
             break
 
 
