@@ -3,11 +3,11 @@ from PIL import Image
 import io
 from bs4 import BeautifulSoup
 # https://www.geeks3d.com/hacklab/20190110/python-3-simple-http-request-with-the-socket-module/
-# www.example.com
-# www.google.com
-# www.tcpipguide.com
-# www.tinyos.net
-# www.linux-ip.net
+
+# TODO:
+# get images not on same server
+# apply not received protocol, ask again
+# Content-Type: text/html; charset=ISO-8859-1 implementeren
 
 SERVERS =   [
             "www.example.com",
@@ -15,15 +15,20 @@ SERVERS =   [
             "www.tcpipguide.com",
             "www.tinyos.net",
             "www.linux-ip.net",
+            '192.168.1.114',
             ]
 
+COMMAND = "GET"
+SERVER = SERVERS[5]
+PORT = 5055
 
-# SERVER = SERVERS[4]
-# SERVER = "0.0.0.0"
-COMMAND = input("HTTP command: ")
-SERVER = input("URI: ")
-PORT = int(input("Port: ") or 80)
-# PORT = 4200
+# COMMAND = "GET"
+# SERVER = SERVERS[3]
+# PORT = 80
+
+# COMMAND = input("HTTP command: ")
+# SERVER = input("URI: ")
+# PORT = int(input("Port: ") or 80)
 ADDR = (SERVER, PORT)
 FORMAT = "utf-8"
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -118,21 +123,14 @@ for image in images:
             response.append(client.recv(10000))
         except:
             response = b''.join(response)
-            header, body = splitHeader(response)
-            print(image, "saving")
+            header, body = splitHeader(response, COMMAND)
             try:
                 img = Image.open(io.BytesIO(body))
                 img.save("images/%s.png" %title)
+                print(image, " saved")
+
             except:
                 print(image, "requested URL not found")
             title += 1
             response = []
-            # print(image, "saved")
-
             break
-
-
-
-#open and read the file after the appending:
-# f = open("htmlBody.html", "r")
-# print(f.read()) 
