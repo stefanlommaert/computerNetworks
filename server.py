@@ -7,71 +7,159 @@ from email.utils import formatdate
 import socket
 from _thread import *
 import threading
+from urllib import request
 from PIL import Image
 import io
+import os
+import time
 
 class BadRequestError(Exception):
     pass
 
-def GET(request, headers):
+class NotModifiedSinceError(Exception):
+    pass
+
+def isModifiedSince(filename, headers):
+    modifiedFileTime = os.path.getmtime('server'+filename)
+    modifiedFileTime = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(modifiedFileTime))
+    for headerName in headers:
+        if "if-modified-since:" in headerName.lower():
+            requestedTime = headerName.lower().split('if-modified-since:')[1].lstrip()
+            modifiedFileTime = modifiedFileTime.lower()
+
+            requestedTime = time.strptime(requestedTime,'%a, %d %b %Y %H:%M:%S gmt')
+            modifiedFileTime = time.strptime(modifiedFileTime,'%a, %d %b %Y %H:%M:%S gmt')
+            if requestedTime > modifiedFileTime:
+                return False
+            else:
+                return True
+    return True
+
+def GET(isHeadCommand, headers, modifiedSince):
     filename = headers[0].split()[1]
-    print(filename)
+    contentType = 'text/html; charset=UTF-8'
     if filename == '/':
         filename = '/index.html'
-        fin = open('server'+filename)
-        content = str.encode(fin.read())
-        fin.close()
-    else:
+    if modifiedSince:
+        if not isModifiedSince(filename, headers):
+            raise NotModifiedSinceError     
+    if ".jpg" in filename:
         im = Image.open('server/gandhalf.jpg')
         buf = io.BytesIO()
         im.save(buf, format='JPEG')
         content = buf.getvalue()
+        contentType = 'image/png'
+    else:
+        fin = open('server'+filename)
+        content = fin.read().encode()
+        fin.close()
+    contentLength = str(len(content))
+    date = formatdate(timeval=None, localtime=False, usegmt=True)
+    if isHeadCommand:
+        HEADER = 'HTTP/1.1 200 OK\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(date, contentLength, contentType)
+        return HEADER.encode()
+    else:
+        HEADER = 'HTTP/1.1 200 OK\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(date, contentLength, contentType)
+        return HEADER.encode() + content
+
+def PUT(headers, body):
+    filename = headers[0].split()[1]
+    filename = filename.split(".")[0]
+    # contentType = 'text/html; charset=UTF-8'
+    newFileCreated = False
+    newContent = False
+    try:
+        f = open("server/put_post_files"+filename+".txt", "x")
+        newFileCreated = True
+    except:
+        f = open("server/put_post_files"+filename+".txt", "r")
+        oldContent = f.read()
+        if body != oldContent:
+            newContent = True
+        f.close()
+        f = open("server/put_post_files"+filename+".txt", "w")
+    f.write(body)
+    f.close()
+    if newFileCreated:
+        HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\n\r\n' %filename
+    elif newContent:
+        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\n\r\n' %filename
+    else:
+        HEADER = 'HTTP/1.1 204 No Content\r\nContent-Location: %s.txt\r\n\r\n' %filename
+    return HEADER.encode() 
         
-    return content
 
-def HEADER():
-    pass
-
-def PUT():
-    pass
-
-def POST():
-    pass
+def POST(headers, body):
+    filename = headers[0].split()[1]
+    filename = filename.split(".")[0]
+    # contentType = 'text/html; charset=UTF-8'
+    newFileCreated = False
+    try:
+        f = open("server/put_post_files"+filename+".txt", "x")
+        newFileCreated = True
+    except:
+        f = open("server/put_post_files"+filename+".txt", "a")
+    f.write(body)
+    f.close()
+    if newFileCreated:
+        HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\n\r\n' %filename
+    else:
+        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\n\r\n' %filename
+    return HEADER.encode() 
 
 def threaded(client_connection):
-    try:
-        while True:
-            request = client_connection.recv(1024).decode()
+    while True:
+        try:
+            # TODO: add all requests to one big request
+            request = client_connection.recv(2048).decode()
             print(request)
-            header = request.split('\r\n\r\n')[0]
+            if request == "":
+                raise BadRequestError
+            body = ""
+            header, body = request.split('\r\n\r\n')[0], body.join(request.split('\r\n\r\n')[1:])
             headers = header.split('\r\n')
+            command = headers[0].split()[0]
             hasHostHeader = False
+            closeConnection = False
+            modifiedSince = False
             for headerName in headers:
-                if "Host: " in headerName:
+                if "host:" in headerName.lower():
                     hasHostHeader = True
+                if "connection: close" in headerName.lower():
+                    closeConnection = True
+                if "if-modified-since:" in headerName.lower():
+                    modifiedSince = True
             if not hasHostHeader:
                 raise BadRequestError
-            if headers[0].split()[0] == "GET":
-                content = GET(request, headers)
-
-            contentLength = str(len(content))
-            date = formatdate(timeval=None, localtime=False, usegmt=True)
-            HEADER = 'HTTP/1.1 200 OK\r\nDate: %s\r\nContent-Length: %s\r\n\r\n' %(date, contentLength)
-            response = str.encode(HEADER) + content
+            if command == "GET":
+                response = GET(False, headers, modifiedSince)
+            if command == "HEAD":
+                response = GET(True, headers, modifiedSince)
+            if command == "PUT":
+                response = PUT(headers, body)
+            if command == "POST":
+                response = POST(headers, body)
             client_connection.send(response)
-            # client_connection.send(response.encode())
-            # client_connection.close()
-            # return
-    except FileNotFoundError:
-        HEADER = 'HTTP/1.1 404 Not Found\r\n'
-        client_connection.send(HEADER.encode())
-    except BadRequestError:
-        HEADER = 'HTTP/1.1 400 Bad Request\r\n'
-        client_connection.send(HEADER.encode())
-    except Exception as e:
-        print(e)
-        HEADER = 'HTTP/1.1 500 Internal Server Error\r\n'
-        client_connection.send(HEADER.encode())
+            
+            if closeConnection:
+                client_connection.close()
+                return
+        except FileNotFoundError:
+            HEADER = 'HTTP/1.1 404 Not Found\r\n'
+            client_connection.send(HEADER.encode())
+        except BadRequestError:
+            HEADER = 'HTTP/1.1 400 Bad Request\r\n'
+            client_connection.send(HEADER.encode())
+        except NotModifiedSinceError:
+            HEADER = 'HTTP/1.1 304 Not Modified\r\n'
+            client_connection.send(HEADER.encode())
+        except ConnectionAbortedError:
+            print("connection closed to client")
+            return
+        except Exception as e:
+            print("error:", e)
+            HEADER = 'HTTP/1.1 500 Internal Server Error\r\n'
+            client_connection.send(HEADER.encode())
 
 
 

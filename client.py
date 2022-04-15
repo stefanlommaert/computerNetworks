@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 # get images not on same server
 # apply not received protocol, ask again
 # Content-Type: text/html; charset=ISO-8859-1 implementeren
+# case incensitive headers
 
 SERVERS =   [
             "www.example.com",
@@ -38,13 +39,11 @@ def send(msg):
     message = msg.encode(FORMAT)
     client.send(message)
 
-
 def isChunked(header):
     for i in range(len(header)):
             if (header[i:i+26]) == b"Transfer-Encoding: chunked":
                 return True
     return False
-
 
 def splitHeader(msg, COMMAND):
     header = b""
@@ -77,10 +76,10 @@ def splitHeader(msg, COMMAND):
 
 if COMMAND == "PUT" or COMMAND == "POST":
     REQUEST = input("PUT/POST request: ")
-    msg = "%s %s HTTP/1.1\r\nHost:%s\r\n\r\n" %(COMMAND, REQUEST, SERVER)
+    msg = "%s /testT.txt HTTP/1.1\r\nHost:%s\r\n\r\n%s" %(COMMAND, SERVER, REQUEST)
 else:
     msg = "%s / HTTP/1.1\r\nHost:%s\r\n\r\n" %(COMMAND, SERVER)
-
+print("send: ", msg)
 send(msg)
 response = []
 while True:
@@ -92,6 +91,7 @@ while True:
         response.append(data)
     except:
         response = b''.join(response)
+        print(response)
         header, body = splitHeader(response, COMMAND)
         body = body.decode("latin-1")
         f = open("htmlBody.html", "w")
@@ -101,7 +101,6 @@ while True:
         break
 
 response = []
-
 f = open("htmlBody.html", "r")
 images = []
 soup = BeautifulSoup(f, features="html.parser")
@@ -116,10 +115,11 @@ f.close()
 title = 0
 for image in images:
     msg = "GET /%s HTTP/1.1\r\nHost:%s\r\n\r\n" %(image, SERVER)
+    print("image send: ", msg)
     send(msg)
     while True:
         try:
-            client.settimeout(0.5)
+            client.settimeout(1)
             response.append(client.recv(10000))
         except:
             response = b''.join(response)
