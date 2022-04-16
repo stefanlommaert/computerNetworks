@@ -80,12 +80,15 @@ def PUT(headers, body):
         f = open("server/put_post_files"+filename+".txt", "w")
     f.write(body)
     f.close()
+    contentLength = 0
+    date = formatdate(timeval=None, localtime=False, usegmt=True)
+    contentType = 'text/html; charset=UTF-8'
     if newFileCreated:
-        HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\n\r\n' %filename
+        HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     elif newContent:
-        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\n\r\n' %filename
+        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     else:
-        HEADER = 'HTTP/1.1 204 No Content\r\nContent-Location: %s.txt\r\n\r\n' %filename
+        HEADER = 'HTTP/1.1 204 No Content\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     return HEADER.encode() 
         
 
@@ -101,20 +104,27 @@ def POST(headers, body):
         f = open("server/put_post_files"+filename+".txt", "a")
     f.write(body)
     f.close()
+    contentLength = 0
+    date = formatdate(timeval=None, localtime=False, usegmt=True)
+    contentType = 'text/html; charset=UTF-8'
     if newFileCreated:
-        HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\n\r\n' %filename
+        HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     else:
-        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\n\r\n' %filename
+        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     return HEADER.encode() 
 
 def threaded(client_connection):
     while True:
         try:
-            # TODO: add all requests to one big request
             request = client_connection.recv(2048).decode()
             print(request)
             if request == "":
                 raise BadRequestError
+
+            contentLength = 0
+            date = formatdate(timeval=None, localtime=False, usegmt=True)
+            contentType = 'text/html; charset=UTF-8'
+            
             body = ""
             header, body = request.split('\r\n\r\n')[0], body.join(request.split('\r\n\r\n')[1:])
             headers = header.split('\r\n')
@@ -145,20 +155,23 @@ def threaded(client_connection):
                 client_connection.close()
                 return
         except FileNotFoundError:
-            HEADER = 'HTTP/1.1 404 Not Found\r\n'
+            HEADER = 'HTTP/1.1 404 Not Found\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
         except BadRequestError:
-            HEADER = 'HTTP/1.1 400 Bad Request\r\n'
+            HEADER = 'HTTP/1.1 400 Bad Request\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
         except NotModifiedSinceError:
-            HEADER = 'HTTP/1.1 304 Not Modified\r\n'
+            HEADER = 'HTTP/1.1 304 Not Modified\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
         except ConnectionAbortedError:
             print("connection closed to client")
             return
+        except ConnectionResetError:
+            print("connection closed to client")
+            return
         except Exception as e:
             print("error:", e)
-            HEADER = 'HTTP/1.1 500 Internal Server Error\r\n'
+            HEADER = 'HTTP/1.1 500 Internal Server Error\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
 
 
