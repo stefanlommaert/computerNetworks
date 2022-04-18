@@ -1,3 +1,3 @@
-a = "a b c d"
-a = a.split(" ")
-print(''.join(a[1:]))
+a = "https://www.google.com"
+newImage = a.replace("https://", "").replace("http://", "")
+print(newImage)

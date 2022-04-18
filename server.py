@@ -155,13 +155,13 @@ def threaded(client_connection):
                 client_connection.close()
                 return
         except FileNotFoundError:
-            HEADER = 'HTTP/1.1 404 Not Found\r\n'%(date, contentLength, contentType)
+            HEADER = 'HTTP/1.1 404 Not Found\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
         except BadRequestError:
-            HEADER = 'HTTP/1.1 400 Bad Request\r\n'%(date, contentLength, contentType)
+            HEADER = 'HTTP/1.1 400 Bad Request\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
         except NotModifiedSinceError:
-            HEADER = 'HTTP/1.1 304 Not Modified\r\n'%(date, contentLength, contentType)
+            HEADER = 'HTTP/1.1 304 Not Modified\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
         except ConnectionAbortedError:
             print("connection closed to client")
