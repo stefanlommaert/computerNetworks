@@ -7,18 +7,20 @@ from email.utils import formatdate
 import socket
 from _thread import *
 import threading
-from urllib import request
 from PIL import Image
 import io
 import os
 import time
 
+# Custom class for 400 Bad Request Exception
 class BadRequestError(Exception):
     pass
 
+# Custom class for 304 Not Modified Exception
 class NotModifiedSinceError(Exception):
     pass
 
+# Checks if the given file has been modified after the given "if-modified-since:" date."
 def isModifiedSince(filename, headers):
     modifiedFileTime = os.path.getmtime('server'+filename)
     modifiedFileTime = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(modifiedFileTime))
@@ -35,6 +37,7 @@ def isModifiedSince(filename, headers):
                 return True
     return True
 
+# Main function for GET and HEAD request. 
 def GET(isHeadCommand, headers, modifiedSince):
     filename = headers[0].split()[1]
     contentType = 'text/html; charset=UTF-8'
@@ -43,7 +46,8 @@ def GET(isHeadCommand, headers, modifiedSince):
     if modifiedSince:
         if not isModifiedSince(filename, headers):
             raise NotModifiedSinceError     
-    if ".jpg" in filename:
+
+    if filename == "/gandhalf.jpg":
         im = Image.open('server/gandhalf.jpg')
         buf = io.BytesIO()
         im.save(buf, format='JPEG')
@@ -62,14 +66,14 @@ def GET(isHeadCommand, headers, modifiedSince):
         HEADER = 'HTTP/1.1 200 OK\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(date, contentLength, contentType)
         return HEADER.encode() + content
 
+# Main function for handling PUT request
 def PUT(headers, body):
     filename = headers[0].split()[1]
     filename = filename.split(".")[0]
-    # contentType = 'text/html; charset=UTF-8'
     newFileCreated = False
     newContent = False
     try:
-        f = open("server/put_post_files"+filename+".txt", "x")
+        f = open("server/put_post_files"+filename+".txt", "x") # Returns error if file already exists.
         newFileCreated = True
     except:
         f = open("server/put_post_files"+filename+".txt", "r")
@@ -86,22 +90,22 @@ def PUT(headers, body):
     if newFileCreated:
         HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     elif newContent:
-        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
+        HEADER = 'HTTP/1.1 200 OK\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     else:
         HEADER = 'HTTP/1.1 204 No Content\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     return HEADER.encode() 
         
-
+# Main function for handling POST request
 def POST(headers, body):
     filename = headers[0].split()[1]
     filename = filename.split(".")[0]
-    # contentType = 'text/html; charset=UTF-8'
     newFileCreated = False
     try:
-        f = open("server/put_post_files"+filename+".txt", "x")
+        f = open("server/put_post_files"+filename+".txt", "x") # Returns error if file already exists.
         newFileCreated = True
     except:
         f = open("server/put_post_files"+filename+".txt", "a")
+
     f.write(body)
     f.close()
     contentLength = 0
@@ -110,9 +114,10 @@ def POST(headers, body):
     if newFileCreated:
         HEADER = 'HTTP/1.1 201 Created\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     else:
-        HEADER = 'HTTP/1.1 204 OK\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
+        HEADER = 'HTTP/1.1 200 OK\r\nContent-Location: %s.txt\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n' %(filename, date, contentLength, contentType)
     return HEADER.encode() 
 
+# Threaded function to handle multiple client requests
 def threaded(client_connection):
     while True:
         try:
@@ -176,14 +181,13 @@ def threaded(client_connection):
 
 
 
-# Create socket
 def main():
     # Define socket host and port
     SERVER_HOST = '192.168.1.114'
-    SERVER_PORT = 5055
+    SERVER_PORT = 80
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((SERVER_HOST, SERVER_PORT))
     server_socket.listen(1)
     print('Listening on port %s ...' % SERVER_PORT)
@@ -194,7 +198,6 @@ def main():
         threading.Thread(target=threaded, args=(client_connection,)).start()
     server_socket.close()
 
-# Close socket
 
 if __name__ == '__main__':
     main()
