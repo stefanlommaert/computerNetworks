@@ -73,15 +73,15 @@ def PUT(headers, body):
     newFileCreated = False
     newContent = False
     try:
-        f = open("server/put_post_files"+filename+".txt", "x") # Returns error if file already exists.
+        f = open("server"+filename+".txt", "x") # Returns error if file already exists.
         newFileCreated = True
     except:
-        f = open("server/put_post_files"+filename+".txt", "r")
+        f = open("server"+filename+".txt", "r")
         oldContent = f.read()
         if body != oldContent:
             newContent = True
         f.close()
-        f = open("server/put_post_files"+filename+".txt", "w")
+        f = open("server"+filename+".txt", "w")
     f.write(body)
     f.close()
     contentLength = 0
@@ -101,10 +101,10 @@ def POST(headers, body):
     filename = filename.split(".")[0]
     newFileCreated = False
     try:
-        f = open("server/put_post_files"+filename+".txt", "x") # Returns error if file already exists.
+        f = open("server"+filename+".txt", "x") # Returns error if file already exists.
         newFileCreated = True
     except:
-        f = open("server/put_post_files"+filename+".txt", "a")
+        f = open("server"+filename+".txt", "a")
 
     f.write(body)
     f.close()
@@ -176,7 +176,7 @@ def threaded(client_connection):
             return
         except Exception as e:
             print("error:", e)
-            HEADER = 'HTTP/1.1 500 Internal Server Error\r\n'%(date, contentLength, contentType)
+            HEADER = 'HTTP/1.1 500 Internal Server Error\r\nDate: %s\r\nContent-Length: %s\r\nContent-Type: %s\r\n\r\n'%(date, contentLength, contentType)
             client_connection.send(HEADER.encode())
 
 
