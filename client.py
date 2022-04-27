@@ -78,10 +78,16 @@ def receive(client, COMMAND):
     while True:
         try:
             client.settimeout(10)
-            data = client.recv(1024)
+            data = client.recv(2048)
             response += data
-
-            if isFullySend(response):
+            if "HEAD" in COMMAND:
+                print(response)
+                f = open("htmlBody.html", "w")
+                body = ""
+                f.write(body)
+                f.close()
+                break
+            elif isFullySend(response):
                 header, body = splitHeader(response, COMMAND)
                 headers = header.decode().split("\r\n")
                 print(header)
@@ -204,8 +210,8 @@ def main():
         REQUEST = input("PUT/POST request: ")
         msg = "%s HTTP/1.1\r\nHost:%s\r\n\r\n%s" %(COMMAND, SERVER, REQUEST)
     else:
-        msg = "%s HTTP/1.1\r\nHost:%s\r\nIf-Modified-Since: Wed, 27 Apr 2022 12:16:00 GMT\r\n\r\n" %(COMMAND, SERVER)
-        # msg = "%s HTTP/1.1\r\nHost:%s\r\n\r\n" %(COMMAND, SERVER)
+        # msg = "%s HTTP/1.1\r\nHost:%s\r\nIf-Modified-Since: Wed, 27 Apr 2022 12:16:00 GMT\r\n\r\n" %(COMMAND, SERVER)
+        msg = "%s HTTP/1.1\r\nHost:%s\r\n\r\n" %(COMMAND, SERVER)
     send(client, msg)
 
     receive(client, COMMAND)
